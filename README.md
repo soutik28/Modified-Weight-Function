@@ -1,9 +1,8 @@
-## Modified-Weight-Function
-## R-Code
-## Step-1: Data reshaping, sorting and cleaning
+### Modified-Weight-Function (R-Code)
+### Step-1: Data reshaping, sorting and cleaning
 
-## Gene Expression Omnibus Dataset (accession number GSE 65622)
-## After downloading the dataset, our first job is to make a transposition. Secondly, the irrelevant columns (like patient-id) are removed from the data. Finally, we covert the excel sheet into ".csv" format and rename the file as "wdata3.csv".
+### Gene Expression Omnibus Dataset (accession number GSE 65622)
+### After downloading the dataset in CSV format, our first job is to make a transposition. Secondly, the irrelevant columns (like patient-id) are removed from the data and finally, we rename the file as "wdata3.csv" and save in a folder.
 
 setwd("C:/Users/Souvik/Desktop/Clinical Research/Weight-paper") #store the data
 wdata3 = read.csv("wdata3.csv") #read the data in R
@@ -69,16 +68,16 @@ for(j in 1:(ncol(wdt)))
   d2[,j] = replace(d1[,j], list = g1, values = mean(s[s>0], na.rm = T))
 }
 
-## Datasets of the selected features where missing values are replaced by the mean of the variables
+### Datasets of the selected features where missing values are replaced by the mean of the variables
 D = data.frame(wdata3$Sample_title, wdata3$visit_time, wdata3$OS, wdata3$Relapse, 
                wdata3$RFS, wdata3$Metastasis, wdata3$DMFS, d2) 
 colnames(D) = c("Sample_title", "visit_time", "OS", "Relapse", "RFS", 
                 "Metastasis", "DMFS", c(names(wdt)))
 dim(D) #dimension of the dataset for final analysis
 
-## Step-2: Function for selecting the features on the basis of modified weights 
+### Step-2: Function for selecting the features on the basis of modified weights 
 
-## Required packages
+### Required packages
 library(base)
 library(bdsmatrix)
 library(Matrix)
