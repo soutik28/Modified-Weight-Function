@@ -87,7 +87,7 @@ Dpv = D.pval[D.pval[,2]<=0.05,] #list of significant variables and their p-value
 
 DMain = data.frame(RFS = D$RFS, Relapse = D$Relapse, D[Dpv[,1]]) #dataset containing significant variables
 
-## Part-2: Function for selecting the features on the basis of modified weights 
+# Step-3: Function for selecting the features on the basis of modified weights 
 #studyvar = Variable name of the study variable
 #status = Status of the study variable (i.e. 1 = event occurred, 0 = no event occurred)
 #data = Name of the high-dimensional dataset containing no missing values
@@ -174,8 +174,10 @@ weightfun = function(studyvar, status, data, m1, m2, p.train, N, threshold)
 }
 feat.selec = weightfun(studyvar = "RFS", status = "Relapse", data = DMain,
                         m1 = 3, m2 = 102, p.train = 0.75, N = 150, threshold = 0.90)
+                        
+# Cox Proportional Hazards Model Fitting
 CoxPH.modified = coxph(Surv(RFS, Relapse)~DMain$FGF.5+DMain$GASP.2...WFIKKN+DMain$MSP.alpha.Chain
                        +DMain$TRAIL.R3...TNFRSF10C+DMain$L.Selectin..CD62L.+DMain$ICAM.1
                        +DMain$PDGF.BB+DMain$Eotaxin.3...CCL26+DMain$PDGF.R.beta+DMain$IFN.gamma
-                       +DMain$Endoglin...CD105+DMain$FGF.13.1B, data = DMain)
-CoxPH.old = coxph(Surv(RFS, Relapse)~DMain$FGF.5+DMain$GASP.2...WFIKKN+DMain$MSP.alpha.Chain, data = DMain)
+                       +DMain$Endoglin...CD105+DMain$FGF.13.1B, data = DMain) #for C-weight
+CoxPH.old = coxph(Surv(RFS, Relapse)~DMain$FGF.5+DMain$GASP.2...WFIKKN+DMain$MSP.alpha.Chain, data = DMain) #for P-weight
