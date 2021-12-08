@@ -1,13 +1,19 @@
-### Modified-Weight-Function (R-Code)
-### Step-1: Data reshaping, sorting and cleaning
+# Modified-Weight-Function
+# Gene Expression Omnibus dataset (accession number GSE 65622)
+# After downloading the dataset in CSV format, our first job is to make a transposition. Secondly, the irrelevant columns (like patient-id) are removed from the data and finally, we rename the file as "wdata3.csv" and save in a folder.
 
-### Gene Expression Omnibus Dataset (accession number GSE 65622)
-### After downloading the dataset in CSV format, our first job is to make a transposition. Secondly, the irrelevant columns (like patient-id) are removed from the data and finally, we rename the file as "wdata3.csv" and save in a folder.
+# Required packages to run the code
+library(base)
+library(bdsmatrix)
+library(Matrix)
+library(dplyr)
+library(survival)
+library(glmnet)
 
-setwd("C:/Users/Souvik/Desktop/Clinical Research/Weight-paper") #store the data
+# Step-1: Data reshaping, sorting and cleaning
+setwd("C:/Users/Souvik/Desktop/Clinical Research/Weight-paper") #store the dataset
 wdata3 = read.csv("wdata3.csv") #read the data in R
 wdat = data.frame(wdata3[,14:520])
-dim(wdat) #dimension of the dataset
 
 count = c() #count the number of null values within each variable
 for(j in 1:ncol(wdat))
@@ -21,15 +27,13 @@ for(j in 1:ncol(wdat))
     }
   }
 }
-
-ntotal = 0 #total number of features who have less than 5% missing values
+ntotal = 0 #total number of features which have less than 5% missing values
 for(j in 1:ncol(wdat))
 {
   if(count[j] <= ncol(wdat)*0.05)
-    ntotal = ntotal + 1
+    ntotal = ntotal + 1 
 }
-
-temp = c() #select those features who have more than 5% missing values
+temp = c() #selection of features which have more than 5% missing values
 for(j in 1:ncol(wdat))
 {
   if(count[j] > ncol(wdat)*0.05)
@@ -38,9 +42,8 @@ for(j in 1:ncol(wdat))
     temp[j] = j
   }
 }
-
 u1 = c(na.omit(temp))
-wdt = wdat[,-u1] #dataset of those selected features who have less than 5% missing values
+wdt = wdat[,-u1] #dataset of the selected features which have less than 5% missing values
 d0 = matrix(0, nrow(wdt), (ncol(wdt)))
 d1 = matrix(0, nrow(wdt), (ncol(wdt)))
 d2 = matrix(0, nrow(wdt), (ncol(wdt)))
@@ -67,24 +70,24 @@ for(j in 1:(ncol(wdt)))
   g1 = na.omit(g1)
   d2[,j] = replace(d1[,j], list = g1, values = mean(s[s>0], na.rm = T))
 }
-
-### Datasets of the selected features where missing values are replaced by the mean of the variables
 D = data.frame(wdata3$Sample_title, wdata3$visit_time, wdata3$OS, wdata3$Relapse, 
-               wdata3$RFS, wdata3$Metastasis, wdata3$DMFS, d2) 
+               wdata3$RFS, wdata3$Metastasis, wdata3$DMFS, d2) # Datasets of the selected features where missing values are replaced by the mean of the variables
 colnames(D) = c("Sample_title", "visit_time", "OS", "Relapse", "RFS", 
                 "Metastasis", "DMFS", c(names(wdt)))
-dim(D) #dimension of the dataset for final analysis
 
-### Step-2: Function for selecting the features on the basis of modified weights 
+# Step-2: Univariate Cox-PH Fitting and use filter method
+genedata = data.frame(RFS = D$RFS, Relapse = D$Relapse, D[,8:334])
+pval = c() #calculation of p-value from cox regression
+for(i in 1:(dim(genedata)[2]-2))
+{
+  pval[i] = round(summary(coxph(Surv(RFS, Relapse)~genedata[,i+2], data = genedata))$waldtest[3],4)
+}
+D.pval = data.frame(names(D[,3:329]), pval)
+Dpv = D.pval[D.pval[,2]<=0.05,] #list of significant variables and their p-values
 
-### Required packages
-library(base)
-library(bdsmatrix)
-library(Matrix)
-library(dplyr)
-library(survival)
-library(glmnet)
+DMain = data.frame(RFS = D$RFS, Relapse = D$Relapse, D[Dpv[,1]]) #dataset containing significant variables
 
+## Part-2: Function for selecting the features on the basis of modified weights 
 #studyvar = Variable name of the study variable
 #status = Status of the study variable (i.e. 1 = event occurred, 0 = no event occurred)
 #data = Name of the high-dimensional dataset containing no missing values
@@ -160,14 +163,19 @@ weightfun = function(studyvar, status, data, m1, m2, p.train, N, threshold)
     w.modified[i] = exp(-0.5 * (1-w[i]) * (CV[i]/range.CV))
   }
   
-  Dframe = data.frame(Name = names(data[,m1:m2]), OldWeight = w, CoefficientofVariation = CV, ModifiedWeight = w.modified)
+  Dframe = data.frame(Name = names(data[,m1:m2]), Pweight = w, 
+                      CoefficientofVariation = CV, Cweight = w.modified)
   D.weight = Dframe[order(Dframe[,4], na.last = NA, decreasing = TRUE),]
   
   selectfeature = D.weight
   SelectFeature = selectfeature[selectfeature$ModifiedWeight > threshold,] 
   #feature selection for final analysis
-  
   return(SelectFeature)
 }
-
-weightfun(studyvar = "RFS", status = "Relapse", data = D, m1 = 8, m2 = 334, p.train = 0.75, N = 150, threshold = 0.90)
+feat.selec = weightfun(studyvar = "RFS", status = "Relapse", data = DMain,
+                        m1 = 3, m2 = 102, p.train = 0.75, N = 150, threshold = 0.90)
+CoxPH.modified = coxph(Surv(RFS, Relapse)~DMain$FGF.5+DMain$GASP.2...WFIKKN+DMain$MSP.alpha.Chain
+                       +DMain$TRAIL.R3...TNFRSF10C+DMain$L.Selectin..CD62L.+DMain$ICAM.1
+                       +DMain$PDGF.BB+DMain$Eotaxin.3...CCL26+DMain$PDGF.R.beta+DMain$IFN.gamma
+                       +DMain$Endoglin...CD105+DMain$FGF.13.1B, data = DMain)
+CoxPH.old = coxph(Surv(RFS, Relapse)~DMain$FGF.5+DMain$GASP.2...WFIKKN+DMain$MSP.alpha.Chain, data = DMain)
